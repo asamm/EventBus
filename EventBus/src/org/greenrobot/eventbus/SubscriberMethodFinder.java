@@ -170,21 +170,37 @@ class SubscriberMethodFinder {
         for (Method method : methods) {
             int modifiers = method.getModifiers();
             if ((modifiers & Modifier.PUBLIC) != 0 && (modifiers & MODIFIERS_IGNORE) == 0) {
-                Class<?>[] parameterTypes = method.getParameterTypes();
-                if (parameterTypes.length == 1) {
-                    Subscribe subscribeAnnotation = method.getAnnotation(Subscribe.class);
-                    if (subscribeAnnotation != null) {
+                // Check annotation first to avoid unnecessary class loading from getParameterTypes().
+                // PR #560: methods without @Subscribe are the vast majority — skip them early.
+                Subscribe subscribeAnnotation;
+                try {
+                    subscribeAnnotation = method.getAnnotation(Subscribe.class);
+                } catch (NoClassDefFoundError e) {
+                    // PR #293: getAnnotation() can trigger class loading that fails on
+                    // older API levels (e.g. @JavascriptInterface). Skip this method.
+                    continue;
+                }
+                if (subscribeAnnotation != null) {
+                    Class<?>[] parameterTypes;
+                    try {
+                        parameterTypes = method.getParameterTypes();
+                    } catch (NoClassDefFoundError e) {
+                        // Method references a class not available on this API level (e.g.
+                        // PictureInPictureUiState on API < 35). Skip safely.
+                        continue;
+                    }
+                    if (parameterTypes.length == 1) {
                         Class<?> eventType = parameterTypes[0];
                         if (findState.checkAdd(method, eventType)) {
                             ThreadMode threadMode = subscribeAnnotation.threadMode();
                             findState.subscriberMethods.add(new SubscriberMethod(method, eventType, threadMode,
                                     subscribeAnnotation.priority(), subscribeAnnotation.sticky()));
                         }
+                    } else if (strictMethodVerification) {
+                        String methodName = method.getDeclaringClass().getName() + "." + method.getName();
+                        throw new EventBusException("@Subscribe method " + methodName +
+                                "must have exactly 1 parameter but has " + parameterTypes.length);
                     }
-                } else if (strictMethodVerification && method.isAnnotationPresent(Subscribe.class)) {
-                    String methodName = method.getDeclaringClass().getName() + "." + method.getName();
-                    throw new EventBusException("@Subscribe method " + methodName +
-                            "must have exactly 1 parameter but has " + parameterTypes.length);
                 }
             } else if (strictMethodVerification && method.isAnnotationPresent(Subscribe.class)) {
                 String methodName = method.getDeclaringClass().getName() + "." + method.getName();
@@ -268,6 +284,10 @@ class SubscriberMethodFinder {
                 clazz = null;
             } else {
                 clazz = clazz.getSuperclass();
+                // PR #560: getSuperclass() returns null for Object or interfaces
+                if (clazz == null) {
+                    return;
+                }
                 String clazzName = clazz.getName();
                 // Skip system classes, this degrades performance.
                 // Also we might avoid some ClassNotFoundException (see FAQ for background).

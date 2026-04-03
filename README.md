@@ -1,117 +1,60 @@
-EventBus
-========
-[EventBus](https://greenrobot.org/eventbus/) is a publish/subscribe event bus for Android and Java.<br/>
-<img src="EventBus-Publish-Subscribe.png" width="500" height="187"/>
+EventBus (Asamm Fork)
+=====================
+Fork of [greenrobot/EventBus](https://github.com/greenrobot/EventBus) 3.3.1 with critical
+bug fixes for modern Android (API 35+, AndroidX, R8 full mode).
 
-[![Build Status](https://github.com/greenrobot/EventBus/actions/workflows/gradle.yml/badge.svg)](https://github.com/greenrobot/EventBus/actions)
-[![Follow greenrobot on Twitter](https://img.shields.io/twitter/follow/greenrobot_de.svg?style=flat-square&logo=twitter)](https://twitter.com/greenrobot_de)
+The upstream project is no longer actively maintained (last release Feb 2024, 147 open issues).
+This fork applies minimal, targeted patches to keep EventBus working with current Android toolchains.
 
-EventBus...
+Changes from upstream 3.3.1
+---------------------------
+**SubscriberMethodFinder** — fix `NoClassDefFoundError` during `register()`:
 
- * simplifies the communication between components
-    * decouples event senders and receivers
-    * performs well with Activities, Fragments, and background threads
-    * avoids complex and error-prone dependencies and life cycle issues
- * makes your code simpler
- * is fast
- * is tiny (~60k jar)
- * is proven in practice by apps with 1,000,000,000+ installs
- * has advanced features like delivery threads, subscriber priorities, etc.
+- Check `@Subscribe` annotation **before** `getParameterTypes()` to avoid unnecessary class loading
+  for non-subscriber methods (based on [PR #560](https://github.com/greenrobot/EventBus/pull/560))
+- Catch `NoClassDefFoundError` in `getAnnotation()` for methods referencing classes unavailable on
+  the current API level (based on [PR #293](https://github.com/greenrobot/EventBus/pull/293))
+- Catch `NoClassDefFoundError` in `getParameterTypes()` for methods with parameter types from newer
+  API levels (e.g. `PictureInPictureUiState` on API < 35, `ComponentCaller` on API < 35).
+  See [issue #737](https://github.com/greenrobot/EventBus/issues/737),
+  [issue #726](https://github.com/greenrobot/EventBus/issues/726)
+- Add null-check in `moveToSuperclass()` after `getSuperclass()`
+  (based on [PR #560](https://github.com/greenrobot/EventBus/pull/560))
 
-EventBus in 3 steps
+Add to your project
 -------------------
-1. Define events:
+[![](https://jitpack.io/v/asamm/EventBus.svg)](https://jitpack.io/#asamm/EventBus)
 
-    ```java  
-    public static class MessageEvent { /* Additional fields if needed */ }
-    ```
+Available via [JitPack](https://jitpack.io/#asamm/EventBus).
 
-2. Prepare subscribers:
-    Declare and annotate your subscribing method, optionally specify a [thread mode](https://greenrobot.org/eventbus/documentation/delivery-threads-threadmode/):  
-
-    ```java
-    @Subscribe(threadMode = ThreadMode.MAIN)  
-    public void onMessageEvent(MessageEvent event) {
-        // Do something
-    }
-    ```
-    Register and unregister your subscriber. For example on Android, activities and fragments should usually register according to their life cycle:
-
-   ```java
-    @Override
-    public void onStart() {
-        super.onStart();
-        EventBus.getDefault().register(this);
-    }
- 
-    @Override
-    public void onStop() {
-        super.onStop();
-        EventBus.getDefault().unregister(this);
-    }
-    ```
-
-3. Post events:
-
-   ```java
-    EventBus.getDefault().post(new MessageEvent());
-    ```
-
-Read the full [getting started guide](https://greenrobot.org/eventbus/documentation/how-to-get-started/).
-
-There are also some [examples](https://github.com/greenrobot-team/greenrobot-examples).
-
-**Note:** we highly recommend the [EventBus annotation processor with its subscriber index](https://greenrobot.org/eventbus/documentation/subscriber-index/).
-This will avoid some reflection related problems seen in the wild.  
-
-Add EventBus to your project
-----------------------------
-<a href="https://search.maven.org/search?q=g:org.greenrobot%20AND%20a:eventbus"><img src="https://img.shields.io/maven-central/v/org.greenrobot/eventbus.svg"></a>
-
-Available on <a href="https://search.maven.org/search?q=g:org.greenrobot%20AND%20a:eventbus">Maven Central</a>.
+Add the JitPack repository (if not already present):
+```kotlin
+// settings.gradle.kts
+repositories {
+    maven(url = "https://jitpack.io")
+}
+```
 
 Android projects:
-```groovy
-implementation("org.greenrobot:eventbus:3.3.1")
+```kotlin
+implementation("com.github.asamm.EventBus:eventbus-android:3.5.0")
 ```
 
-Java projects:
-```groovy
-implementation("org.greenrobot:eventbus-java:3.3.1")
-```
-```xml
-<dependency>
-    <groupId>org.greenrobot</groupId>
-    <artifactId>eventbus-java</artifactId>
-    <version>3.3.1</version>
-</dependency>
+Java-only projects:
+```kotlin
+implementation("com.github.asamm.EventBus:eventbus-java:3.5.0")
 ```
 
 R8, ProGuard
 ------------
+This library ships [with embedded rules](/eventbus-android/consumer-rules.pro).
 
-If your project uses R8 or ProGuard this library ships [with embedded rules](/eventbus-android/consumer-rules.pro).
-
-Homepage, Documentation, Links
-------------------------------
-For more details please check the [EventBus website](https://greenrobot.org/eventbus). Here are some direct links you may find useful:
-
-[Features](https://greenrobot.org/eventbus/features/)
-
-[Documentation](https://greenrobot.org/eventbus/documentation/)
-
-[Changelog](https://github.com/greenrobot/EventBus/releases)
-
-[FAQ](https://greenrobot.org/eventbus/documentation/faq/)
+Upstream documentation
+----------------------
+For general EventBus usage, see the [original documentation](https://greenrobot.org/eventbus/documentation/).
 
 License
 -------
 Copyright (C) 2012-2021 Markus Junginger, greenrobot (https://greenrobot.org)
 
 EventBus binaries and source code can be used according to the [Apache License, Version 2.0](LICENSE).
-
-Other projects by greenrobot
-============================
-[__ObjectBox__](https://objectbox.io/) ([GitHub](https://github.com/objectbox/objectbox-java)) is a new superfast object-oriented database.
-
-[__Essentials__](https://github.com/greenrobot/essentials) is a set of utility classes and hash functions for Android & Java projects.
