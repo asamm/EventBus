@@ -37,7 +37,7 @@ repositories {
 
 Android projects:
 ```kotlin
-implementation("com.github.asamm.EventBus:eventbus-android:3.5.0")
+implementation("com.github.asamm.EventBus:eventbus:3.5.0")
 ```
 
 Java-only projects:
