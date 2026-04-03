@@ -165,8 +165,10 @@ public class EventBus {
             subscriptionsByEventType.put(eventType, subscriptions);
         } else {
             if (subscriptions.contains(newSubscription)) {
-                throw new EventBusException("Subscriber " + subscriber.getClass() + " already registered to event "
-                        + eventType);
+                // Silently skip instead of crashing. Double-registration can happen
+                // legitimately with StateFlow-based lifecycle callbacks that replay
+                // the current state. See greenrobot/EventBus#645.
+                return;
             }
         }
 
